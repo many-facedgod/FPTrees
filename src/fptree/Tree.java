@@ -33,30 +33,64 @@ public class Tree {
         this.all = new ArrayList<>();
     }
     /**
+     * Creates a Tree from a list of transactions
+     * @param l The list of transactions
+     * @param max_label The number of different kinds of items
+     */
+    Tree(ArrayList<ArrayList<Integer>> l, int max_label)
+    {
+        this(max_label);
+        for(List<Integer> x: l)
+            this.add(x);
+        
+    }
+    
+    private void print(Node curr, String path)
+    {
+        
+        if(!(curr.label==-1))System.out.println(path+" "+curr.label+":"+curr.count);
+        int k=1;
+        for (Node z: curr.children)
+        {
+            if(z==null)continue;
+            String path_n=path+"."+k++;
+            print(z, path_n);
+        }
+    }
+    
+    public void print_tree()
+    {
+        print(root, "");
+    }
+    
+    
+    
+    /**
      * Adds a transaction to the FP Tree
      * @param list The transaction in the form of a sorted integer array
      */
-    void add(int list[]) {
+    void add(List<Integer> list) {
+        
         Node curr = root;
-        for (int i = 0; i < list.length; i++) {
-            if (curr.children[list[i]] == null) {
-                curr.children[list[i]] = new Node(list[i], max_label);
-                curr = curr.children[list[i]];
+        for (int i: list) {
+            if (curr.children[i] == null) {
+                curr.children[i] = new Node(i, max_label);
+                curr = curr.children[i];
                 curr.id = numNodes++;
                 all.add(curr);
-                if (head[list[i]] == null) {
-                    head[list[i]] = curr;
-                    tail[list[i]] = curr;
+                if (head[i] == null) {
+                    head[i] = curr;
+                    tail[i] = curr;
                 } else {
-                    tail[list[i]].next_same = curr;
-                    tail[list[i]] = curr;
+                    tail[i].next_same = curr;
+                    tail[i] = curr;
                 }
             } else {
-                curr = curr.children[list[i]];
+                curr = curr.children[i];
                 curr.count++;
 
             }
-            counts[list[i]]++;
+            counts[i]++;
 
         }
     }
@@ -182,7 +216,7 @@ public class Tree {
      */
     private void transparency(int minsup) {
         for (int i = 0; i < max_label; i++) {
-            transparent[i] = counts[i] <= minsup;
+            transparent[i] = counts[i] < minsup;
         }
     }
     /**
@@ -192,7 +226,7 @@ public class Tree {
      * @param depth The current depth of the recursion tree
      * @param finalset The List to which the extracted item sets are appended
      */
-    private void getFrequent(int minsup, int prefix[], int depth, List<int[]> finalset) {
+    private void getFrequent(int minsup, int prefix[], int depth, ArrayList<ArrayList<Itemset>> result) {
         if (!isActivePrev(root, depth)) {
             return;
         }
@@ -203,15 +237,21 @@ public class Tree {
             int new_pref[] = new int[prefix.length + 1];
             System.arraycopy(prefix, 0, new_pref, 1, prefix.length);
             new_pref[0] = i;
+            if(result.size()-1<depth)
+                result.add(new ArrayList<>());
             deactivate(root, depth, i);
             HashMap<Integer, Integer> stored = new HashMap<>();
             percolateUp(root, depth, stored, i);
-            transparency(minsup);
-            getFrequent(minsup, new_pref, depth + 1, finalset);
+            transparency(minsup);            
+            getFrequent(minsup, new_pref, depth + 1, result);
             reestablish(stored);
             reactivate(root, depth);
             transparency(minsup);
-            finalset.add(new_pref);
+            Itemset its=new Itemset();
+            for(int item: new_pref)
+                its.add(item);
+            its.setCount(counts[i]);
+            result.get(depth).add(its);
 
         }
     }
@@ -220,12 +260,12 @@ public class Tree {
      * @param minsup The support count threshold
      * @return A List of the generated frequent item sets.
      */
-    public List<int[]> frequent(int minsup) {
-        List<int[]> finalset = new ArrayList<>();
+    public ArrayList<ArrayList<Itemset>> frequent(int minsup) {
+        ArrayList<ArrayList<Itemset>> result = new ArrayList<>();
         int pref[] = new int[0];
         transparency(minsup);
-        getFrequent(minsup, pref, 0, finalset);
-        return finalset;
+        getFrequent(minsup, pref, 0, result);
+        return result;
     }
 
 }
@@ -254,4 +294,66 @@ class Node {
         this.id = -1;
 
     }
+}
+/**
+ * Class representing a set of items
+ * @author Amala Deshmukh
+ */
+class Itemset {
+	ArrayList<Integer> itemset;
+	int count;
+	
+	Itemset()
+	{
+		this.itemset = new ArrayList<Integer>();
+		this.count = 0;
+	}
+
+	Itemset(ArrayList<Integer> itemset)
+	{
+		this.itemset = itemset;
+		this.count = 0;
+	}
+
+	void add(Integer item)
+	{
+		this.itemset.add(item);
+	}
+
+	Integer getItem(int index)
+	{
+		return this.itemset.get(index);
+	}
+
+	ArrayList<Integer> getItems(int num)
+	{
+		ArrayList<Integer> items = new ArrayList<Integer>();
+		for(int i=0; i<num; i++)
+			items.add(this.itemset.get(i));
+		return items;
+	}
+
+	void setCount(int count)
+	{
+		this.count = count;
+	}
+
+	int getCount()
+	{
+		return this.count;
+	}
+
+	int size()
+	{
+		return this.itemset.size();
+	}
+
+
+	@Override
+	public String toString()
+	{
+		return "("+itemset+", "+count+")";
+	}
+
+	
 }
